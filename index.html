@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statum — Agentic evidence resolution for physical-world claims</title>
+<meta name="description" content="Statum is an AI investigator for physical-world claims. It reconciles fragmented satellite evidence into decision-grade verdicts, and tells you what's still missing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B1220;
+    --panel:#141D2E;
+    --panel-2:#1B2740;
+    --border:#24314A;
+    --text:#EAEEF3;
+    --text-muted:#8B96A8;
+    --text-faint:#5B6A80;
+    --supported:#3FCB8E;
+    --conflicted:#F2A541;
+    --underdet:#7C8AA0;
+    --brand:#7C8CFF;
+    --brand-2:#A78BFA;
+    --radius:14px;
+    --maxw:1180px;
+    --display: 'Space Grotesk', sans-serif;
+    --body: 'IBM Plex Sans', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--text);
+    font-family:var(--body);
+    font-size:16px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  img,svg{display:block;max-width:100%;}
+  a{color:inherit;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px;}
+  h1,h2,h3{font-family:var(--display);font-weight:600;letter-spacing:-0.02em;margin:0;}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:"";width:14px;height:1px;background:var(--text-faint);}
+  section{position:relative;}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--body);font-weight:600;font-size:14.5px;
+    padding:13px 22px;border-radius:9px;
+    border:1px solid transparent;cursor:pointer;
+    text-decoration:none;transition:transform .18s ease, background .18s ease, border-color .18s ease;
+  }
+  .btn:hover{transform:translateY(-1px);}
+  .btn-primary{background:var(--brand);color:#0B1220;}
+  .btn-primary:hover{background:#8f9dff;}
+  .btn-ghost{background:transparent;border-color:var(--border);color:var(--text);}
+  .btn-ghost:hover{border-color:var(--brand);}
+  :focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+
+  /* ---------- NAV ---------- */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(11,18,32,0.82);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  nav{display:flex;align-items:center;justify-content:space-between;padding:18px 0;}
+  .logo{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:0.02em;display:flex;align-items:center;gap:10px;}
+  .logo-mark{width:20px;height:20px;flex:none;}
+  .navlinks{display:flex;gap:32px;align-items:center;}
+  .navlinks a{
+    font-size:14px;color:var(--text-muted);text-decoration:none;
+    position:relative;padding-bottom:3px;
+  }
+  .navlinks a::after{
+    content:"";position:absolute;left:0;bottom:0;width:0;height:1px;background:var(--brand);
+    transition:width .2s ease;
+  }
+  .navlinks a:hover{color:var(--text);}
+  .navlinks a:hover::after{width:100%;}
+  .navcta{display:flex;gap:12px;align-items:center;}
+  .navtoggle{display:none;background:none;border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:18px;width:38px;height:38px;cursor:pointer;line-height:1;}
+  .mobile-menu{
+    display:none;flex-direction:column;gap:4px;
+    padding:0 0 16px;
+  }
+  .mobile-menu.open{display:flex;}
+  .mobile-menu a{
+    color:var(--text-muted);text-decoration:none;font-size:15px;
+    padding:10px 4px;border-bottom:1px solid var(--border);
+  }
+  .mobile-menu a:hover{color:var(--text);}
+
+  /* ---------- HEX BG ---------- */
+  .hexbg{position:absolute;inset:0;opacity:0.35;pointer-events:none;overflow:hidden;}
+  .hexbg svg{width:100%;height:100%;}
+
+  /* ---------- HERO ---------- */
+  .hero{padding:96px 0 80px;overflow:hidden;}
+  .hero-grid{display:grid;grid-template-columns:1.05fr 0.95fr;gap:56px;align-items:center;position:relative;z-index:2;}
+  .hero h1{font-size:clamp(32px,4.2vw,52px);line-height:1.08;margin:18px 0 20px;}
+  .hero h1 .hl{color:var(--brand);}
+  .hero p.lead{font-size:17.5px;color:var(--text-muted);max-width:520px;margin:0 0 32px;}
+  .hero-ctas{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
+  .hero-note{font-family:var(--mono);font-size:12px;color:var(--text-faint);}
+
+  /* ---------- EVIDENCE CONSOLE ---------- */
+  .console{
+    background:linear-gradient(180deg, var(--panel), var(--panel-2));
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:22px;
+    box-shadow:0 30px 80px -30px rgba(0,0,0,0.6);
+    position:relative;
+  }
+  .console-head{
+    display:flex;justify-content:space-between;align-items:center;
+    font-family:var(--mono);font-size:11.5px;color:var(--text-faint);
+    padding-bottom:14px;margin-bottom:16px;border-bottom:1px solid var(--border);
+    letter-spacing:0.04em;
+  }
+  .console-dots{display:flex;gap:6px;}
+  .console-dots span{width:7px;height:7px;border-radius:50%;background:var(--border);}
+  .console-claim{font-family:var(--body);font-weight:600;font-size:15px;margin-bottom:16px;min-height:22px;}
+  .evrow{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 12px;border-radius:9px;background:rgba(255,255,255,0.02);
+    margin-bottom:8px;font-size:13.5px;
+    opacity:0;transform:translateY(6px);
+    transition:opacity .4s ease, transform .4s ease;
+  }
+  .evrow.show{opacity:1;transform:translateY(0);}
+  .evrow .tag{
+    font-family:var(--mono);font-size:11px;color:var(--text-faint);
+    width:150px;flex:none;
+  }
+  .evrow .stmt{flex:1;color:var(--text-muted);}
+  .evicon{width:16px;height:16px;flex:none;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+  .evicon.yes{background:rgba(63,203,142,0.18);color:var(--supported);}
+  .evicon.no{background:rgba(124,138,160,0.18);color:var(--underdet);}
+  .evicon.warn{background:rgba(242,165,65,0.18);color:var(--conflicted);}
+  .verdict-row{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-top:18px;padding-top:16px;border-top:1px solid var(--border);
+    opacity:0;transform:translateY(6px);transition:opacity .5s ease, transform .5s ease;
+  }
+  .verdict-row.show{opacity:1;transform:translateY(0);}
+  .verdict-label{font-family:var(--mono);font-size:11px;color:var(--text-faint);letter-spacing:0.08em;}
+  .verdict-pill{
+    font-family:var(--mono);font-weight:500;font-size:12.5px;
+    padding:6px 14px;border-radius:20px;letter-spacing:0.05em;
+  }
+  .verdict-pill.SUPPORTED{background:rgba(63,203,142,0.14);color:var(--supported);border:1px solid rgba(63,203,142,0.35);}
+  .verdict-pill.CONFLICTED{background:rgba(242,165,65,0.14);color:var(--conflicted);border:1px solid rgba(242,165,65,0.35);}
+  .verdict-pill.UNDERDETERMINED{background:rgba(124,138,160,0.14);color:var(--underdet);border:1px solid rgba(124,138,160,0.35);}
+  .console-next{
+    font-family:var(--mono);font-size:12px;color:var(--text-faint);margin-top:12px;
+    opacity:0;transition:opacity .5s ease;min-height:16px;
+  }
+  .console-next.show{opacity:1;}
+  .console-foot{display:flex;justify-content:flex-end;margin-top:16px;}
+  .console-foot button{
+    font-family:var(--mono);font-size:11.5px;color:var(--text-muted);
+    background:none;border:1px solid var(--border);border-radius:7px;
+    padding:7px 12px;cursor:pointer;transition:border-color .2s ease,color .2s ease;
+  }
+  .console-foot button:hover{border-color:var(--brand);color:var(--text);}
+
+  /* ---------- SECTION GENERIC ---------- */
+  .section{padding:88px 0;border-top:1px solid var(--border);}
+  .section-head{max-width:680px;margin-bottom:52px;}
+  .section-head h2{font-size:clamp(26px,3vw,36px);margin-top:14px;line-height:1.15;}
+  .section-head p{color:var(--text-muted);font-size:16px;margin-top:14px;}
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease, transform .6s ease;}
+  .reveal.in{opacity:1;transform:translateY(0);}
+
+  /* ---------- PROBLEM WORKFLOW ---------- */
+  .flow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:36px;}
+  .flow-step{
+    flex:1;min-width:150px;background:var(--panel);border:1px solid var(--border);
+    border-radius:11px;padding:20px 18px;text-align:center;font-weight:600;font-size:14.5px;
+  }
+  .flow-step.bottleneck{background:rgba(242,165,65,0.08);border-color:rgba(242,165,65,0.35);color:var(--conflicted);}
+  .flow-arrow{color:var(--text-faint);font-size:16px;flex:none;}
+  .pain-box{
+    background:var(--panel-2);border:1px solid var(--border);border-radius:14px;
+    padding:26px 28px;
+  }
+  .pain-box .eyebrow{margin-bottom:10px;color:var(--conflicted);}
+  .pain-box p{font-family:var(--display);font-size:19px;font-weight:500;margin:0;line-height:1.4;}
+
+  /* ---------- STATES GRID ---------- */
+  .states-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:28px;}
+  .state-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:14px;
+    padding:24px;border-top:3px solid var(--border);
+  }
+  .state-card h3{font-family:var(--mono);font-size:14px;letter-spacing:0.04em;margin-bottom:10px;}
+  .state-card p{color:var(--text-muted);font-size:14px;margin:0;}
+  .state-card.supported{border-top-color:var(--supported);}
+  .state-card.supported h3{color:var(--supported);}
+  .state-card.conflicted{border-top-color:var(--conflicted);}
+  .state-card.conflicted h3{color:var(--conflicted);}
+  .state-card.underdet{border-top-color:var(--underdet);}
+  .state-card.underdet h3{color:var(--underdet);}
+  .nbe-box{
+    background:linear-gradient(120deg, rgba(124,140,255,0.10), rgba(167,139,250,0.06));
+    border:1px solid rgba(124,140,255,0.3);border-radius:14px;padding:24px 28px;
+  }
+  .nbe-box .eyebrow{color:var(--brand);margin-bottom:10px;}
+  .nbe-box p{margin:0;font-size:16px;color:var(--text);}
+  .nbe-box p b{color:var(--brand);}
+
+  /* ---------- PIPELINE ---------- */
+  .pipeline{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:40px;}
+  .pipe-step{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px 20px;position:relative;}
+  .pipe-num{font-family:var(--mono);color:var(--brand);font-size:13px;margin-bottom:10px;}
+  .pipe-step h3{font-size:17px;margin-bottom:8px;}
+  .pipe-step p{font-size:13px;color:var(--text-muted);margin:0;}
+  .worked{
+    background:var(--panel-2);border:1px solid var(--border);border-radius:16px;padding:30px 32px;
+  }
+  .worked .eyebrow{color:var(--conflicted);margin-bottom:14px;}
+  .worked .claim{font-weight:600;font-size:16px;margin-bottom:12px;}
+  .worked .verdict-line{margin-bottom:10px;font-size:14.5px;color:var(--text-muted);}
+  .worked .verdict-line b{font-family:var(--mono);color:var(--conflicted);}
+  .worked .next-line{font-size:14px;color:var(--text-faint);font-style:italic;}
+
+  /* ---------- DIFF TABLE ---------- */
+  .diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .diff-card{border-radius:14px;padding:26px 28px;border:1px solid var(--border);}
+  .diff-card.old{background:var(--panel);}
+  .diff-card.new{background:linear-gradient(135deg, rgba(124,140,255,0.10), var(--panel-2));border-color:rgba(124,140,255,0.3);}
+  .diff-card .eyebrow{margin-bottom:12px;}
+  .diff-card .flow-line{font-family:var(--mono);font-size:14.5px;color:var(--text);margin-bottom:10px;line-height:1.7;}
+  .diff-card p.desc{font-size:13.5px;color:var(--text-muted);margin:0;}
+
+  /* ---------- STACK ---------- */
+  .stack-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+  .stack-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px 20px;}
+  .stack-card h3{font-family:var(--mono);font-size:15px;margin-bottom:8px;color:var(--brand);}
+  .stack-card p{font-size:13px;color:var(--text-muted);margin:0;}
+
+  /* ---------- MARKET ---------- */
+  .market-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+  .market-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:18px 20px;font-size:14.5px;display:flex;align-items:center;gap:12px;
+  }
+  .market-card .dot{width:8px;height:8px;border-radius:50%;background:var(--brand);flex:none;}
+
+  /* ---------- FOUNDER ---------- */
+  .founder-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:56px;align-items:start;}
+  .founder-quote{
+    font-family:var(--display);font-size:22px;font-weight:500;line-height:1.4;
+    border-left:3px solid var(--brand);padding-left:22px;margin-bottom:24px;
+  }
+  .founder-meta{color:var(--text-muted);font-size:14.5px;line-height:1.8;}
+  .found-list{list-style:none;padding:0;margin:0;}
+  .found-list li{
+    font-family:var(--mono);font-size:13px;color:var(--text-muted);
+    padding:9px 0;border-bottom:1px solid var(--border);
+  }
+  .found-list li:last-child{border-bottom:none;}
+
+  /* ---------- CTA ---------- */
+  .cta-section{
+    background:radial-gradient(circle at 30% 20%, rgba(124,140,255,0.16), transparent 60%), var(--panel);
+    border-radius:24px;padding:64px 56px;text-align:center;border:1px solid var(--border);
+    margin:0 28px;
+    max-width:calc(var(--maxw) - 56px);
+    margin-left:auto;margin-right:auto;
+  }
+  .cta-section h2{font-size:clamp(26px,3.4vw,38px);margin-bottom:16px;}
+  .cta-section p{color:var(--text-muted);max-width:520px;margin:0 auto 32px;font-size:16px;}
+  .cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+
+  footer{padding:48px 0 60px;}
+  .foot-grid{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;}
+  .foot-links{display:flex;gap:26px;flex-wrap:wrap;}
+  .foot-links a{font-size:13.5px;color:var(--text-muted);text-decoration:none;}
+  .foot-links a:hover{color:var(--text);}
+  .foot-copy{font-family:var(--mono);font-size:12px;color:var(--text-faint);}
+
+  @media (max-width:900px){
+    .hero-grid{grid-template-columns:1fr;}
+    .states-grid{grid-template-columns:1fr;}
+    .pipeline{grid-template-columns:1fr 1fr;}
+    .diff-grid{grid-template-columns:1fr;}
+    .stack-grid{grid-template-columns:1fr 1fr;}
+    .market-grid{grid-template-columns:1fr;}
+    .founder-grid{grid-template-columns:1fr;gap:32px;}
+    .navlinks{display:none;}
+    .navtoggle{display:block;}
+    .cta-section{padding:44px 28px;margin:0 16px;}
+  }
+  @media (max-width:560px){
+    .pipeline{grid-template-columns:1fr;}
+    .stack-grid{grid-template-columns:1fr;}
+    .flow{flex-direction:column;align-items:stretch;}
+    .flow-arrow{transform:rotate(90deg);text-align:center;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; scroll-behavior:auto !important;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <nav>
+      <div class="logo">
+        <svg class="logo-mark" viewBox="0 0 24 24" fill="none"><path d="M12 1L22.4 7v10L12 23 1.6 17V7L12 1Z" stroke="#7C8CFF" stroke-width="1.6"/><path d="M12 8v8M8.5 10l7 4M15.5 10l-7 4" stroke="#7C8CFF" stroke-width="1.3" stroke-linecap="round"/></svg>
+        STATUM
+      </div>
+      <div class="navlinks">
+        <a href="#problem">Problem</a>
+        <a href="#how">How it works</a>
+        <a href="#product">Product</a>
+        <a href="#stack">Why Google</a>
+        <a href="#founder">Founder</a>
+      </div>
+      <div class="navcta">
+        <a class="btn btn-primary" href="#cta">Request access</a>
+        <button class="navtoggle" id="navtoggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+      </div>
+    </nav>
+    <div class="mobile-menu" id="mobile-menu">
+      <a href="#problem">Problem</a>
+      <a href="#how">How it works</a>
+      <a href="#product">Product</a>
+      <a href="#stack">Why Google</a>
+      <a href="#founder">Founder</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hexbg" id="hexbg"></div>
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">AGENTIC EVIDENCE RESOLUTION</div>
+      <h1>AI agents that investigate <span class="hl">what the evidence actually supports.</span></h1>
+      <p class="lead">Statum reconciles fragmented satellite evidence into decision-grade verdicts for physical-world claims — and tells you exactly what's still missing before it decides.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#cta">Request a pilot</a>
+        <a class="btn btn-ghost" href="#how">See how it works</a>
+      </div>
+      <div class="hero-note">Initial application: land-use change investigation</div>
+    </div>
+
+    <div class="console" id="console">
+      <div class="console-head">
+        <span id="case-id">CASE #2091 · LAND-USE VERIFICATION</span>
+        <div class="console-dots"><span></span><span></span><span></span></div>
+      </div>
+      <div class="console-claim" id="claim-text"></div>
+      <div id="evrows"></div>
+      <div class="verdict-row" id="verdict-row">
+        <span class="verdict-label">STATUM VERDICT</span>
+        <span class="verdict-pill" id="verdict-pill">—</span>
+      </div>
+      <div class="console-next" id="console-next"></div>
+      <div class="console-foot">
+        <button id="run-case">Run another case →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="problem">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">The problem</div>
+      <h2>The expensive problem isn't finding anomalies. It's resolving them.</h2>
+      <p>Organizations can now screen thousands of locations using satellite data. But when evidence is ambiguous, analysts still have to manually reconcile sensors, dates, resolutions, and conflicting signals.</p>
+    </div>
+    <div class="flow reveal">
+      <div class="flow-step">Screen</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Flag</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step bottleneck">Human investigation</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step bottleneck">Decision</div>
+    </div>
+    <div class="pain-box reveal">
+      <div class="eyebrow">The economic pain</div>
+      <p>As automated screening scales, the cost of resolving exceptions becomes the bottleneck.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">The insight</div>
+      <h2>AI shouldn't always answer the question. It should first determine whether the evidence is sufficient.</h2>
+      <p>Most AI systems optimize for "what happened?" Statum asks: "does the available evidence justify that conclusion?"</p>
+    </div>
+    <div class="states-grid reveal">
+      <div class="state-card supported">
+        <h3>SUPPORTED</h3>
+        <p>Evidence sufficiently converges across sensors and sources.</p>
+      </div>
+      <div class="state-card conflicted">
+        <h3>CONFLICTED</h3>
+        <p>Material evidence disagrees — resolution requires more than a majority vote.</p>
+      </div>
+      <div class="state-card underdet">
+        <h3>UNDERDETERMINED</h3>
+        <p>Evidence is insufficient to support any conclusion yet.</p>
+      </div>
+    </div>
+    <div class="nbe-box reveal">
+      <div class="eyebrow">+ Next-best evidence</div>
+      <p>Every unresolved case comes with a recommendation: <b>what to obtain next</b> to resolve the uncertainty. This is the core shift — from prediction to evidence resolution.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="product">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">The product</div>
+      <h2>An AI investigator for physical-world claims</h2>
+      <p>Input: a claim, a location, and a time window. Statum runs it through four stages.</p>
+    </div>
+    <div class="pipeline reveal">
+      <div class="pipe-step">
+        <div class="pipe-num">01</div>
+        <h3>Assemble</h3>
+        <p>Retrieve relevant physical-world evidence — Sentinel-1, Sentinel-2, VIIRS, and contextual data.</p>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">02</div>
+        <h3>Reconcile</h3>
+        <p>Compare evidence across space, time, sensors, and quality.</p>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">03</div>
+        <h3>Resolve</h3>
+        <p>Produce a verdict: SUPPORTED, CONFLICTED, or UNDERDETERMINED.</p>
+      </div>
+      <div class="pipe-step">
+        <div class="pipe-num">04</div>
+        <h3>Escalate</h3>
+        <p>Recommend the next-best evidence to resolve what remains uncertain.</p>
+      </div>
+    </div>
+    <div class="worked reveal">
+      <div class="eyebrow">Worked example</div>
+      <div class="claim">Claim: Land-use change occurred between 2022–2025.</div>
+      <div class="verdict-line"><b>CONFLICTED</b> — SAR and optical observations support physical change, while nighttime-light evidence does not provide corresponding support.</div>
+      <div class="next-line">Next: Acquire additional SAR evidence from the missing period.</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">Technical differentiation</div>
+      <h2>Statum is not another satellite classification model</h2>
+    </div>
+    <div class="diff-grid reveal">
+      <div class="diff-card old">
+        <div class="eyebrow">Existing geospatial AI</div>
+        <div class="flow-line">Image → Model → Prediction</div>
+        <p class="desc">A single-pass classifier. No reasoning about whether the evidence justifies the output.</p>
+      </div>
+      <div class="diff-card new">
+        <div class="eyebrow">Statum</div>
+        <div class="flow-line">Claim → Evidence retrieval → Cross-modal reconciliation → Conflict detection → Sufficiency → Decision / Abstention → Next-best evidence</div>
+        <p class="desc">The defensible layer is the evidence-resolution protocol and evidence graph — not the underlying imagery. Every investigation strengthens the system's judgment about which evidence resolves which kind of uncertainty.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="stack">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">Why Google</div>
+      <h2>Future of Knowledge: reasoning over incomplete evidence</h2>
+      <p>Statum sits directly under Google's Future of Knowledge theme — building AI systems that help institutions extract reliable knowledge from incomplete and fragmented data.</p>
+    </div>
+    <div class="stack-grid reveal">
+      <div class="stack-card">
+        <h3>Gemini</h3>
+        <p>Multimodal reasoning and multi-step investigation across evidence types.</p>
+      </div>
+      <div class="stack-card">
+        <h3>Gemma</h3>
+        <p>Efficient, open-model experimentation for specialized triage components.</p>
+      </div>
+      <div class="stack-card">
+        <h3>Earth Engine</h3>
+        <p>Large-scale Earth-observation access and processing.</p>
+      </div>
+      <div class="stack-card">
+        <h3>Google Cloud</h3>
+        <p>Scalable deployment.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">Initial market</div>
+      <h2>Start where evidence is fragmented and decisions are consequential</h2>
+      <p>Land-use and environmental verification, first. Routine screening is increasingly automated — but ambiguous cases still require expert interpretation.</p>
+    </div>
+    <div class="market-grid reveal">
+      <div class="market-card"><span class="dot"></span>Environmental monitoring organizations</div>
+      <div class="market-card"><span class="dot"></span>Compliance organizations</div>
+      <div class="market-card"><span class="dot"></span>Development-finance institutions</div>
+      <div class="market-card"><span class="dot"></span>Large-scale land-use verification bodies</div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="founder">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">Founder</div>
+      <h2>Built at the intersection of geospatial intelligence, AI, and institutional decision-making</h2>
+    </div>
+    <div class="founder-grid reveal">
+      <div>
+        <div class="founder-quote">"I have spent my career working with imperfect geospatial evidence in institutions where decisions still have to be made."</div>
+        <div class="founder-meta">
+          Benson M. Gachaga<br>
+          15+ years across UN missions, international development, and geospatial analytics.<br><br>
+          MBA — Gies College of Business, University of Illinois Urbana-Champaign<br>
+          MSc Geoinformation & Earth Observation — ITC Netherlands
+        </div>
+      </div>
+      <ul class="found-list">
+        <li>Earth-observation pipelines</li>
+        <li>SAR and optical satellite analysis</li>
+        <li>VIIRS night-lights</li>
+        <li>H3 spatial indexing</li>
+        <li>Python / geospatial analytics</li>
+        <li>Agentic AI orchestration</li>
+        <li>Decision-support systems</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cta" style="border-top:none;">
+  <div class="cta-section reveal">
+    <h2>When the physical world is uncertain,<br>investigate the evidence — not just the prediction.</h2>
+    <p>Statum is building the reliability layer AI needs to reason about physical-world claims. We're looking for early domain partners in environmental monitoring, compliance, and development finance.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="mailto:hello@statum.ai?subject=Statum%20early%20access">Request early access</a>
+      <a class="btn btn-ghost" href="mailto:hello@statum.ai?subject=Statum%20—%20let's%20talk">Talk to the founder</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-grid">
+    <div class="logo" style="font-size:16px;">STATUM</div>
+    <div class="foot-links">
+      <a href="#problem">Problem</a>
+      <a href="#how">How it works</a>
+      <a href="#product">Product</a>
+      <a href="#stack">Why Google</a>
+      <a href="#founder">Founder</a>
+    </div>
+    <div class="foot-copy">© 2026 Statum. Evidence, not assumption.</div>
+  </div>
+</footer>
+
+<script>
+// ---------- Hex background (H3-inspired) ----------
+(function(){
+  const el = document.getElementById('hexbg');
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox','0 0 800 500');
+  svg.setAttribute('preserveAspectRatio','xMidYMid slice');
+  const size = 34, rows = 16, cols = 26;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const x = c*size*1.5 + (r%2? size*0.75:0) - 40;
+      const y = r*size*0.87 - 40;
+      const pts = [];
+      for(let i=0;i<6;i++){
+        const ang = Math.PI/180*(60*i-30);
+        pts.push((x+size/2*Math.cos(ang)).toFixed(1)+','+(y+size/2*Math.sin(ang)).toFixed(1));
+      }
+      const poly = document.createElementNS(ns,'polygon');
+      poly.setAttribute('points',pts.join(' '));
+      poly.setAttribute('fill','none');
+      poly.setAttribute('stroke','#24314A');
+      poly.setAttribute('stroke-width','1');
+      svg.appendChild(poly);
+    }
+  }
+  el.appendChild(svg);
+})();
+
+// ---------- Evidence console demo ----------
+const cases = [
+  {
+    id: "CASE #2091 · LAND-USE VERIFICATION",
+    claim: "Claim: Land-use change occurred between 2022–2025.",
+    rows: [
+      {tag:"SENTINEL-2 (OPTICAL)", stmt:"Supports physical change", icon:"yes"},
+      {tag:"SENTINEL-1 (SAR)", stmt:"Supports physical change", icon:"yes"},
+      {tag:"VIIRS (NIGHTTIME)", stmt:"No corresponding signal", icon:"warn"}
+    ],
+    verdict:"CONFLICTED",
+    next:"Next-best evidence: acquire additional SAR pass from the missing period."
+  },
+  {
+    id: "CASE #2114 · FOREST-COVER LOSS",
+    claim: "Claim: Forest-cover loss occurred in Q3 2025.",
+    rows: [
+      {tag:"SENTINEL-2 (OPTICAL)", stmt:"Canopy loss confirmed", icon:"yes"},
+      {tag:"SENTINEL-1 (SAR)", stmt:"Backscatter change confirmed", icon:"yes"},
+      {tag:"VIIRS (NIGHTTIME)", stmt:"Anomaly consistent with clearing", icon:"yes"}
+    ],
+    verdict:"SUPPORTED",
+    next:"Evidence sufficient — case closed, no further action required."
+  },
+  {
+    id: "CASE #2138 · WETLAND BOUNDARY",
+    claim: "Claim: Wetland boundary shifted between 2021–2024.",
+    rows: [
+      {tag:"SENTINEL-2 (OPTICAL)", stmt:"Obscured — 2 of 4 quarters", icon:"warn"},
+      {tag:"SENTINEL-1 (SAR)", stmt:"Ambiguous — seasonal flooding", icon:"warn"},
+      {tag:"CONTEXTUAL DATA", stmt:"Insufficient ground reference", icon:"no"}
+    ],
+    verdict:"UNDERDETERMINED",
+    next:"Next-best evidence: request a dry-season SAR pass to remove seasonal ambiguity."
+  }
+];
+
+let caseIndex = 0;
+const claimEl = document.getElementById('claim-text');
+const rowsEl = document.getElementById('evrows');
+const verdictRow = document.getElementById('verdict-row');
+const verdictPill = document.getElementById('verdict-pill');
+const nextEl = document.getElementById('console-next');
+const caseIdEl = document.getElementById('case-id');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function iconChar(type){
+  if(type==='yes') return '✓';
+  if(type==='warn') return '!';
+  return '×';
+}
+
+function playCase(c){
+  caseIdEl.textContent = c.id;
+  claimEl.textContent = c.claim;
+  rowsEl.innerHTML = '';
+  verdictRow.classList.remove('show');
+  nextEl.classList.remove('show');
+  verdictPill.className = 'verdict-pill';
+  verdictPill.textContent = '—';
+
+  c.rows.forEach((r, i)=>{
+    const row = document.createElement('div');
+    row.className = 'evrow';
+    row.innerHTML = `<span class="evicon ${r.icon}">${iconChar(r.icon)}</span><span class="tag">${r.tag}</span><span class="stmt">${r.stmt}</span>`;
+    rowsEl.appendChild(row);
+  });
+
+  const rowEls = rowsEl.querySelectorAll('.evrow');
+  const delay = reduceMotion ? 0 : 260;
+  rowEls.forEach((row, i)=>{
+    setTimeout(()=>row.classList.add('show'), reduceMotion? 0 : i*delay + 150);
+  });
+
+  const verdictDelay = reduceMotion ? 0 : rowEls.length*delay + 500;
+  setTimeout(()=>{
+    verdictPill.textContent = c.verdict;
+    verdictPill.classList.add(c.verdict);
+    verdictRow.classList.add('show');
+  }, verdictDelay);
+
+  setTimeout(()=>{
+    nextEl.textContent = c.next;
+    nextEl.classList.add('show');
+  }, verdictDelay + (reduceMotion?0:300));
+}
+
+document.getElementById('run-case').addEventListener('click', ()=>{
+  caseIndex = (caseIndex+1) % cases.length;
+  playCase(cases[caseIndex]);
+});
+playCase(cases[0]);
+
+// ---------- Mobile menu toggle ----------
+const navtoggle = document.getElementById('navtoggle');
+const mobileMenu = document.getElementById('mobile-menu');
+navtoggle.addEventListener('click', ()=>{
+  const open = mobileMenu.classList.toggle('open');
+  navtoggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  navtoggle.textContent = open ? '✕' : '☰';
+});
+mobileMenu.querySelectorAll('a').forEach(a=>{
+  a.addEventListener('click', ()=>{
+    mobileMenu.classList.remove('open');
+    navtoggle.setAttribute('aria-expanded','false');
+    navtoggle.textContent = '☰';
+  });
+});
+
+// ---------- Scroll reveal ----------
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+  });
+},{threshold:0.15});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+
+</body>
+</html>
