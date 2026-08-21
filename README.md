@@ -11,8 +11,8 @@ self-contained.
 ## Before you deploy — placeholders to swap
 
 - **Email address**: the "Request early access" and "Talk to the founder" buttons
-  link to `mailto:hello@statum.ai`. Replace with your real address (search for
-  `hello@statum.ai` in `index.html`, two occurrences).
+  link to `maina.anu@gmail.com`. Replace with your real address (search for
+  `maina.anu@gmail.com` in `index.html`, two occurrences).
 - **Domain / title tag / meta description**: update if you register a real domain.
 - **Favicon**: none is set. Add a `<link rel="icon" ...>` in `<head>` if you want one.
 
